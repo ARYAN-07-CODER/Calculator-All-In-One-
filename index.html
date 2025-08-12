@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>All-In-One Functional Calculator</title>
+    <!-- This script is only used when the app is built with Capacitor -->
+    <script src="capacitor.js"></script>
+    <style>
+        /* --- All CSS styles --- */
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: #333; }
+        .all-in-one-app { display: flex; width: 850px; max-width: 100%; height: 620px; max-height: 100%; background-color: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden; position: relative; transition: width 0.3s ease; }
+        .sidebar { width: 250px; background-color: #fafafa; padding: 25px; padding-top: 70px; border-right: 1px solid #e0e0e0; flex-shrink: 0; transition: margin-left 0.3s ease; z-index: 200; }
+        .sidebar ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar li { display: flex; align-items: center; padding: 12px 10px; border-radius: 8px; font-weight: 500; cursor: pointer; transition: background-color 0.2s, color 0.2s; color: #3c4043; }
+        .sidebar li:hover { background-color: #f1f3f4; }
+        .sidebar li.active { background-color: #e8f0fe; color: #1967d2; }
+        .sidebar li .icon { margin-right: 15px; font-size: 20px; }
+        .sidebar-hidden .sidebar { margin-left: -250px; }
+        .main-content { flex-grow: 1; padding: 20px 25px; display: flex; flex-direction: column; width: calc(100% - 250px); transition: width 0.3s ease; }
+        .menu-button { position: absolute; top: 20px; left: 15px; width: 40px; height: 40px; border: none; background: none; font-size: 24px; cursor: pointer; z-index: 300; }
+        .calculator-view { display: none; flex-direction: column; gap: 10px; width: 100%; height: 100%; }
+        .calculator-view.active { display: flex; animation: fadeIn 0.4s ease-in-out; }
+        
+        /* MODIFIED: Algebra display bar is now taller */
+        #algebra-calculator .algebra-display {
+            width: 100%;
+            height: 110px; 
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fff;
+            text-align: right;
+            font-size: 64px; /* Adjusted for new height */
+            font-weight: 300;
+            padding: 10px;
+            caret-color: #1a73e8;
+        }
+        #algebra-calculator .algebra-display:focus { outline: none; }
+        
+        .keypad-container { flex-grow: 1; }
+        .keypad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 100%; height: 100%; align-items: center; justify-items: center; }
+        #keypad-advanced { display: none; }
+        .keypad button { border: none; background-color: #f1f3f4; font-size: 20px; font-weight: 500; color: #202124; cursor: pointer; transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s; width: 65px; height: 65px; border-radius: 50%; }
+        .keypad button:hover { background-color: #e8eaed; }
+        .keypad button:active { box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); transform: scale(0.95); }
+        .keypad button.function { color: #1a73e8; }
+        .keypad button.operator { color: #1a73e8; font-size: 26px; }
+        .keypad button.clear { color: #d93025; }
+        .keypad button.equals { grid-row: span 2; height: 140px; background-color: #4285f4; color: #fff; font-size: 32px; border-radius: 32px; }
+        #keypad-standard button.wide { grid-column: span 2; width: 140px; border-radius: 32px; }
+        #keypad-advanced button { font-size: 18px; }
+        .calculator-view h3 { margin: 0; padding-bottom: 10px; color: #1967d2; font-size: 20px; border-bottom: 2px solid #e8f0fe; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group label { font-weight: 500; color: #5f6368; font-size: 14px; }
+        .form-group input, .form-group select { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
+        .calc-button { padding: 12px; border: none; border-radius: 25px; background-color: #4285f4; color: white; font-size: 16px; cursor: pointer; transition: background-color 0.2s; }
+        .calc-button:hover { background-color: #1b66c9; }
+        .result-box { margin-top: 10px; padding: 15px; background-color: #e8f0fe; border-radius: 8px; text-align: center; font-size: 16px; line-height: 1.4; }
+        .result-box .value { font-weight: bold; font-size: 20px; color: #1967d2; }
+        .result-pop-in { animation: popIn 0.3s ease-out; }
+        #geo-visual-container { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 10px; min-height: 100px; }
+        #shape-image-container { flex-shrink: 0; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; }
+        #shape-image-display { max-width: 100px; max-height: 100px; height: auto; }
+        #shape-formula-container { font-size: 16px; font-weight: 500; color: #5f6368; font-style: italic; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.9); } 80% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+        
+        @media (max-width: 768px) { .all-in-one-app { width: 100%; height: 100%; border-radius: 0; } .sidebar { position: absolute; height: 100%; box-shadow: 2px 0 10px rgba(0,0,0,0.1); } .main-content { width: 100%; } .sidebar-hidden .sidebar { margin-left: -250px; } .keypad { gap: 8px; } .keypad button { width: 60px; height: 60px; } #keypad-standard button.wide { width: 128px; } .keypad button.equals { height: 128px; } }
+    </style>
+</head>
+<body class="sidebar-hidden">
+
+    <div class="all-in-one-app" id="app-container">
+        <!-- All HTML content is the same -->
+        <button class="menu-button" onclick="toggleSidebar()">☰</button>
+        <div class="sidebar">
+            <ul id="sidebar-nav">
+                <li class="active" onclick="switchView('algebra-calculator', this)"><span class="icon">🧮</span> Algebra</li>
+                <li onclick="switchView('geometry-calculator', this)"><span class="icon">📐</span> Geometry</li>
+                <li onclick="switchView('converters-calculator', this)"><span class="icon">🛠️</span> Unit Converters</li>
+                <li onclick="switchView('datetime-calculator', this)"><span class="icon">🗓️</span> Date & Time</li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div id="algebra-calculator" class="calculator-view active">
+                 <input type="text" id="algebra-display" value="0" inputmode="none">
+                 <div class="keypad-container">
+                    <div id="keypad-standard" class="keypad">
+                        <button class="function" onclick="toggleFunctions()">ƒ(x)</button><button class="function" onclick="appendToAlgebraDisplay('(')">(</button><button class="function" onclick="appendToAlgebraDisplay(')')">)</button><button class="function" onclick="appendToAlgebraDisplay('%')">%</button><button class="function clear" onclick="clearAllAlgebra()">AC</button>
+                        <button onclick="appendToAlgebraDisplay('7')">7</button><button onclick="appendToAlgebraDisplay('8')">8</button><button onclick="appendToAlgebraDisplay('9')">9</button><button class="operator" onclick="appendToAlgebraDisplay('/')">÷</button><button class="function clear" onclick="clearAlgebraEntry()">⌫</button>
+                        <button onclick="appendToAlgebraDisplay('4')">4</button><button onclick="appendToAlgebraDisplay('5')">5</button><button onclick="appendToAlgebraDisplay('6')">6</button><button class="operator" onclick="appendToAlgebraDisplay('*')">×</button><button class="equals" onclick="calculateAlgebraResult()">=</button>
+                        <button onclick="appendToAlgebraDisplay('1')">1</button><button onclick="appendToAlgebraDisplay('2')">2</button><button onclick="appendToAlgebraDisplay('3')">3</button><button class="operator" onclick="appendToAlgebraDisplay('-')">−</button>
+                        <button onclick="appendToAlgebraDisplay('0')" class="wide">0</button><button onclick="appendToAlgebraDisplay('.')">.</button><button class="operator" onclick="appendToAlgebraDisplay('+')">+</button>
+                    </div>
+                    <div id="keypad-advanced" class="keypad">
+                        <button class="function" onclick="toggleFunctions()">123</button><button class="function" onclick="toggleInverse()">INV</button><button id="sin-btn" class="function" onclick="appendToAlgebraDisplay('Math.sin(')">sin</button><button id="cos-btn" class="function" onclick="appendToAlgebraDisplay('Math.cos(')">cos</button><button id="tan-btn" class="function" onclick="appendToAlgebraDisplay('Math.tan(')">tan</button><button class="function" onclick="appendToAlgebraDisplay('**2')">x²</button><button class="function" onclick="appendToAlgebraDisplay('**3')">x³</button><button class="function" onclick="appendToAlgebraDisplay('**')">xʸ</button><button class="function" onclick="appendToAlgebraDisplay('Math.sqrt(')">√</button><button class="function" onclick="appendToAlgebraDisplay('Math.cbrt(')">³√</button><button class="function" onclick="appendToAlgebraDisplay('**(-1)')">x⁻¹</button><button class="function" onclick="appendToAlgebraDisplay('Math.log10(')">log</button><button class="function" onclick="appendToAlgebraDisplay('Math.log(')">ln</button><button class="function" onclick="appendToAlgebraDisplay('Math.E')">e</button><button class="equals" onclick="calculateAlgebraResult()">=</button><button class="function" onclick="appendToAlgebraDisplay('Math.PI')">π</button><button class="function" onclick="appendToAlgebraDisplay('(')">(</button><button class="function" onclick="appendToAlgebraDisplay(')')">)</button><button class="function" onclick="appendToAlgebraDisplay(lastAnswer)">Ans</button><button class="function" onclick="appendToAlgebraDisplay('Math.abs(')">|x|</button><button class="function" onclick="appendToAlgebraDisplay('!')">x!</button><button class="function" onclick="appendToAlgebraDisplay('*10**')">×10ⁿ</button><button class="function clear" onclick="clearAlgebraEntry()">⌫</button>
+                    </div>
+                 </div>
+            </div>
+            <div id="geometry-calculator" class="calculator-view">
+                <h3>Geometry Calculator</h3>
+                <div id="geo-visual-container"><div id="shape-image-container"><img id="shape-image-display" src="" alt="Selected Shape"></div><div id="shape-formula-container"><p id="shape-formula-display"></p></div></div>
+                <div class="form-group"><label for="geometry-type-select">Calculation Type</label><select id="geometry-type-select"><option value="twoD">2D (Area)</option><option value="threeD">3D (Volume)</option></select></div>
+                <div class="form-group"><label for="shape-select">Select a Shape</label><select id="shape-select"></select></div>
+                <div class="form-group" id="geometry-inputs"></div><button class="calc-button" onclick="calculateGeometry()">Calculate</button><div class="result-box" id="geometry-result"></div>
+            </div>
+            <div id="converters-calculator" class="calculator-view">
+                <h3>Unit Converter</h3>
+                <div class="form-group"><label for="converter-type">Conversion Type</label><select id="converter-type"><option value="length">Length</option><option value="weight">Weight</option><option value="temperature">Temperature</option></select></div>
+                <div class="form-group"><label for="converter-input">Value</label><input type="number" id="converter-input" placeholder="Enter value"></div>
+                <div class="form-group"><label for="converter-from-unit">From</label><select id="converter-from-unit"></select></div>
+                <div class="form-group"><label for="converter-to-unit">To</label><select id="converter-to-unit"></select></div><button class="calc-button" onclick="calculateConversion()">Convert</button><div class="result-box" id="converter-result"></div>
+            </div>
+            <div id="datetime-calculator" class="calculator-view">
+                <h3>Age Calculator</h3><div class="form-group"><label for="birth-date">Enter Date of Birth</label><input type="date" id="birth-date"></div><button class="calc-button" onclick="calculateAge()">Calculate Age</button><div class="result-box" id="datetime-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Ad and App Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.Capacitor && Capacitor.isNativePlatform()) {
+                console.log("Running in Capacitor App.");
+            } else {
+                console.log("Running in Web Browser: Initializing AdSense.");
+                initializeWebAdSense();
+            }
+        });
+
+        function initializeWebAdSense() {
+            const adSenseScript = document.createElement('script');
+            adSenseScript.async = true;
+            adSenseScript.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX'; // REPLACE WITH YOUR ADSENSE ID
+            adSenseScript.crossOrigin = 'anonymous';
+            document.head.appendChild(adSenseScript);
+        }
+
+        // --- Calculator Logic (FULL AND CORRECTED) ---
+        function toggleSidebar() { document.getElementById('app-container').classList.toggle('sidebar-hidden'); }
+        function switchView(viewId, element) {
+            document.querySelectorAll('.calculator-view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            document.querySelectorAll('#sidebar-nav li').forEach(i => i.classList.remove('active'));
+            element.classList.add('active');
+            if (window.innerWidth <= 768) { toggleSidebar(); }
+        }
+        
+        const algebraDisplay = document.getElementById('algebra-display');
+        let isAlgebraResultDisplayed = false; let isInverseActive = false; let lastAnswer = 0;
+        
+        function animateResult(element) {
+            element.classList.remove('result-pop-in');
+            void element.offsetWidth; 
+            element.classList.add('result-pop-in');
+        }
+        function appendToAlgebraDisplay(value) {
+            if (value === '!') { try { algebraDisplay.value = factorial(eval(algebraDisplay.value)); } catch (e) { algebraDisplay.value = 'Error'; } isAlgebraResultDisplayed = true; return; }
+            const selectionStart = algebraDisplay.selectionStart;
+            const selectionEnd = algebraDisplay.selectionEnd;
+            const currentVal = algebraDisplay.value;
+            const valStr = value.toString();
+            let newValue;
+            if (isAlgebraResultDisplayed || currentVal === '0') {
+                newValue = valStr;
+            } else {
+                newValue = currentVal.substring(0, selectionStart) + valStr + currentVal.substring(selectionEnd);
+            }
+            algebraDisplay.value = newValue;
+            isAlgebraResultDisplayed = false;
+            const newCursorPos = selectionStart + valStr.length;
+            algebraDisplay.focus();
+            algebraDisplay.setSelectionRange(newCursorPos, newCursorPos);
+        }
+        function factorial(n){if(n<0||!Number.isInteger(n))return 'Error';if(n===0||n===1)return 1;return n*factorial(n-1);}
+        function clearAllAlgebra(){algebraDisplay.value='0'; isAlgebraResultDisplayed = false; algebraDisplay.focus();}
+        function clearAlgebraEntry() {
+            const selectionStart = algebraDisplay.selectionStart;
+            const selectionEnd = algebraDisplay.selectionEnd;
+            const currentVal = algebraDisplay.value;
+            let newValue;
+            let newCursorPos;
+            if (selectionStart === selectionEnd && selectionStart > 0) {
+                newValue = currentVal.substring(0, selectionStart - 1) + currentVal.substring(selectionEnd);
+                newCursorPos = selectionStart - 1;
+            } else {
+                newValue = currentVal.substring(0, selectionStart) + currentVal.substring(selectionEnd);
+                newCursorPos = selectionStart;
+            }
+            algebraDisplay.value = newValue || '0';
+            isAlgebraResultDisplayed = false;
+            algebraDisplay.focus();
+            algebraDisplay.setSelectionRange(newCursorPos, newCursorPos);
+        }
+        function calculateAlgebraResult(){
+            try{
+                let expr = algebraDisplay.value;
+                expr = expr.replace(/(\d|\))(\(|Math\.|[A-Za-z])/g, '$1*$2');
+                expr = expr.replace(/%/g,'/100').replace(/÷/g,'/').replace(/×/g,'*');
+                const result = eval(expr);
+                lastAnswer = result;
+                algebraDisplay.value = parseFloat(result.toPrecision(12));
+                animateResult(algebraDisplay);
+            } catch(err){ algebraDisplay.value='Error'; }
+            isAlgebraResultDisplayed=true;
+            algebraDisplay.focus();
+        }
+        function toggleFunctions(){const s=document.getElementById('keypad-standard'), a=document.getElementById('keypad-advanced');if(s.style.display==='none'){s.style.display='grid';a.style.display='none';}else{s.style.display='none';a.style.display='grid';}}
+        function toggleInverse() {
+            isInverseActive = !isInverseActive;
+            const sinBtn = document.getElementById('sin-btn');
+            const cosBtn = document.getElementById('cos-btn');
+            const tanBtn = document.getElementById('tan-btn');
+            if (isInverseActive) {
+                sinBtn.innerHTML = 'sin<sup>-1</sup>'; sinBtn.onclick = function() { appendToAlgebraDisplay('Math.asin('); };
+                cosBtn.innerHTML = 'cos<sup>-1</sup>'; cosBtn.onclick = function() { appendToAlgebraDisplay('Math.acos('); };
+                tanBtn.innerHTML = 'tan<sup>-1</sup>'; tanBtn.onclick = function() { appendToAlgebraDisplay('Math.atan('); };
+            } else {
+                sinBtn.innerHTML = 'sin'; sinBtn.onclick = function() { appendToAlgebraDisplay('Math.sin('); };
+                cosBtn.innerHTML = 'cos'; cosBtn.onclick = function() { appendToAlgebraDisplay('Math.cos('); };
+                tanBtn.innerHTML = 'tan'; tanBtn.onclick = function() { appendToAlgebraDisplay('Math.tan('); };
+            }
+        }
+        
+        const geoTypeSelect = document.getElementById('geometry-type-select');
+        const shapeSelect = document.getElementById('shape-select');
+        const geoInputs = document.getElementById('geometry-inputs');
+        const geoResult = document.getElementById('geometry-result');
+        const shapeImage = document.getElementById('shape-image-display');
+        const formulaDisplay = document.getElementById('shape-formula-display');
+        const geometryCalculations = {
+            twoD: { title: 'Area', shapes: { rectangle: {i:[{n:'Length',id:'rl'},{n:'Width',id:'rw'}],c:()=>{const l=parseFloat(document.getElementById('rl').value),w=parseFloat(document.getElementById('rw').value);return l*w;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSI5MCIgaGVpZ2h0PSI1MCIgeD0iNSIgeT0iNSIgc3Ryb2tlPSJibGFjayIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+', formula: 'Area = l × w'}, circle: {i:[{n:'Radius',id:'cr'}],c:()=>{const r=parseFloat(document.getElementById('cr').value);return Math.PI*r*r;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgc3Ryb2tlPSJibGFjayIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+', formula: 'Area = π × r²'}, triangle: {i:[{n:'Base',id:'tb'},{n:'Height',id:'th'}],c:()=>{const b=parseFloat(document.getElementById('tb').value),h=parseFloat(document.getElementById('th').value);return 0.5*b*h;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjUwLDEwIDk1LDkwIDUsOTAiIHN0cm9rZT0iYmxhY2siIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPg==', formula: 'Area = ½ × b × h'}, square: {i:[{n:'Side',id:'sqs'}],c:()=>{const s=parseFloat(document.getElementById('sqs').value);return s*s;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIHg9IjEwIiB5PSIxMCIgc3Ryb2tlPSJibGFjayIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+', formula: 'Area = s²'}, parallelogram: {i:[{n:'Base',id:'pb'},{n:'Vertical Height',id:'ph'}],c:()=>{const b=parseFloat(document.getElementById('pb').value),h=parseFloat(document.getElementById('ph').value);return b*h;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwb2x5Z29uIHBvaW50cz0iMjUsMTAgOTUsMTAgNzUsNTAgNSw1MCIgc3Ryb2tlPSJibGFjayIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+', formula: 'Area = b × h'}, rhombus: {i:[{n:'Diagonal 1',id:'rhd1'},{n:'Diagonal 2',id:'rhd2'}],c:()=>{const d1=parseFloat(document.getElementById('rhd1').value),d2=parseFloat(document.getElementById('rhd2').value);return (d1*d2)/2;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjUwLDUgOTUsNTAgNTAsOTUgNSw1MCIgc3Ryb2tlPSJibGFjayIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+', formula: 'Area = (d₁×d₂)/2'}, trapezium: {i:[{n:'Base 1',id:'tzb1'},{n:'Base 2',id:'tzb2'},{n:'Height',id:'tzh'}],c:()=>{const b1=parseFloat(document.getElementById('tzb1').value),b2=parseFloat(document.getElementById('tzb2').value),h=parseFloat(document.getElementById('tzh').value);return ((b1+b2)/2)*h;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwb2x5Z29uIHBvaW50cz0iMjAsMTAgODAsMTAgOTUsNTAgNSw1MCIgc3Ryb2tlPSJibGFjayIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+', formula: 'Area = ½(b₁+b₂)h'}, ellipse: {i:[{n:'Radius A',id:'ela'},{n:'Radius B',id:'elb'}],c:()=>{const a=parseFloat(document.getElementById('ela').value),b=parseFloat(document.getElementById('elb').value);return Math.PI*a*b;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDYwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxlbGxpcHNlIGN4PSI1MCIgY3k9IjMwIiByeD0iNDUiIHJ5PSIyNSIgc3Ryb2tlPSJibGFjayIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+', formula: 'Area = πab'}, kite: {i:[{n:'Diagonal p',id:'kdp'},{n:'Diagonal q',id:'kdq'}],c:()=>{const p=parseFloat(document.getElementById('kdp').value),q=parseFloat(document.getElementById('kdq').value);return (p*q)/2;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjUwLDEwIDgwLDQwIDUwLDkwIDIwLDQwIiBzdHJva2U9ImJsYWNrIiBmaWxsPSJub25lIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4=', formula: 'Area = (p×q)/2'}, parabolic_segment: {i:[{n:'Base',id:'psb'},{n:'Height',id:'psh'}],c:()=>{const b=parseFloat(document.getElementById('psb').value),h=parseFloat(document.getElementById('psh').value);return (2/3)*b*h;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0gNSw3MCBRIDUwLDExIDk1LDcwIFoiIHN0cm9rZT0iYmxhY2siIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPg==', formula: 'Area = ⅔ × b × h'}, semicircle: {i:[{n:'Radius',id:'scr'}],c:()=>{const r=parseFloat(document.getElementById('scr').value);return (Math.PI*r*r)/2;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDU1IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0gNSw1MCBBIDQ1LDQ1IDAgMCwxIDk1LDUwIFoiIHN0cm9rZT0iYmxhY2siIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPg==', formula: 'Area = (π × r²)/2'}, pentagon: {i:[{n:'Side',id:'pgs'}],c:()=>{const s=parseFloat(document.getElementById('pgs').value);return 0.25*Math.sqrt(5*(5+2*Math.sqrt(5)))*s*s;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjUwLDUgOTUsNDAgODAsOTUgMjAsOTUgNSw0MCIgc3Ryb2tlPSJibGFjayIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+', formula: 'Area ≈ 1.72 × s²'}, hexagon: {i:[{n:'Side',id:'hgs'}],c:()=>{const s=parseFloat(document.getElementById('hgs').value);return ((3*Math.sqrt(3))/2)*s*s;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9Ijc1LDEwIDk1LDUwIDc1LDkwIDI1LDkwIDUsNTAgMjUsMTAiIHN0cm9rZT0iYmxhY2siIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPg==', formula: 'Area ≈ 2.598 × s²'}, octagon: {i:[{n:'Side',id:'ogs'}],c:()=>{const s=parseFloat(document.getElementById('ogs').value);return 2*(1+Math.sqrt(2))*s*s;}, img: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjMwLDExIDcwLDExIDg5LDMwIDg5LDcwIDcwLDg5IDMwLDg5IDExLDcwIDExLDMwIiBzdHJva2U9ImJsYWNrIiBmaWxsPSJub25lIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4=', formula: 'Area ≈ 4.828 × s²'}}},
+            threeD: { title: 'Volume', shapes: { cube: {i:[{n:'Side', id:'cbs'}], c:() => {const s=parseFloat(document.getElementById('cbs').value); return s*s*s;}, img: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB4PSIxNSIgeT0iMzUiIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBvbHlnb24gcG9pbnRzPSIxNSwzNSAzNSwxNSA4NSwxNSA2NSwzNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBvbHlnb24gcG9pbnRzPSI2NSwzNSA4NSwxNSA4NSw2NSA2NSw4NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+', formula: 'Volume = s³'}, cylinder: {i:[{n:'Radius', id:'cylr'}, {n:'Height', id:'cylh'}], c:() => {const r=parseFloat(document.getElementById('cylr').value), h=parseFloat(document.getElementById('cylh').value); return Math.PI*r*r*h;}, img: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNMTAsMzBBNDAsMTUgMCAwLDEgOTAsMzBNMTAsMzBWODBBNDAsMTUgMCAwLDAgOTAsODBWMzBNOTAsMzBBNDAsMTUgMCAwLDAgMTAsMzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iYmxhY2siIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPg==', formula: 'Volume = πr²h'}, sphere: {i:[{n:'Radius', id:'sphr'}], c:() => {const r=parseFloat(document.getElementById('sphr').value); return (4/3)*Math.PI*Math.pow(r,3);}, img: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIzIi8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iNTAiIHJ4PSI0NSIgcnk9IjE1IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIvPjxwYXRoIGQ9Ik01MCw1QTI1LDQ1LDAsMCwwLDUwLDk1IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWRhc2hhcnJheT0iNSw1Ii8+PHBhdGggZD0iTTUwLDUgQTI1LDQ1LDAsMCwxLDUwLDk1IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuNSIvPjwvc3ZnPg==', formula: 'Volume = ⁴⁄₃πr³'}, cone: {i:[{n:'Radius', id:'cnr'}, {n:'Height', id:'cnh'}], c:() => {const r=parseFloat(document.getElementById('cnr').value), h=parseFloat(document.getElementById('cnh').value); return (1/3)*Math.PI*r*r*h;}, img: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNMTAsODBBNDAsMTUgMCAwLDEgOTAsODBaTTUwLDEwTDEwLDgwTTUwLDEwTDkwLDgwIiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4=', formula: 'Volume = ⅓πr²h'}}}
+        };
+        function updateGeometryType() { const type = geoTypeSelect.value; shapeImage.classList.remove('shape-image-3d-rotating'); const shapes = geometryCalculations[type].shapes; shapeSelect.innerHTML = Object.keys(shapes).map(shapeName => `<option value="${shapeName.replace('_', ' ')}">${shapeName.replace(/_/g, ' ').charAt(0).toUpperCase() + shapeName.replace(/_/g, ' ').slice(1)}</option>`).join(''); updateGeoInputs(); }
+        function updateGeoInputs(){ const type = geoTypeSelect.value; const shapeName = shapeSelect.value.replace(/ /g, '_'); if (!shapeName) return; const shapeData = geometryCalculations[type].shapes[shapeName]; shapeImage.src = shapeData.img; formulaDisplay.innerText = shapeData.formula; geoInputs.innerHTML = shapeData.i.map(i => `<label>${i.n}</label><input type="number" id="${i.id}" placeholder="Enter value">`).join(''); geoResult.innerHTML = 'Result here'; }
+        function calculateGeometry(){ const type = geoTypeSelect.value; const shapeName = shapeSelect.value.replace(/ /g, '_'); const calcType = geometryCalculations[type].title; const calculationFunc = geometryCalculations[type].shapes[shapeName].c; try { const result = calculationFunc(); geoResult.innerHTML = `${calcType}: <span class="value">${result.toFixed(4)}</span>`; animateResult(geoResult); } catch(e){ geoResult.innerHTML = 'Invalid Input'; } }
+        geoTypeSelect.addEventListener('change', updateGeometryType);
+        shapeSelect.addEventListener('change', updateGeoInputs);
+        updateGeometryType(); 
+
+        const convType=document.getElementById('converter-type'),fromUnit=document.getElementById('converter-from-unit'),toUnit=document.getElementById('converter-to-unit'),convResult=document.getElementById('converter-result');
+        const units={ length: {'Kilometre': 0.001, 'Metre': 1, 'Centimetre': 100, 'Millimetre': 1000, 'Micrometre': 1e6, 'Nanometre': 1e9, 'Mile': 0.000621371, 'Yard': 1.09361, 'Foot': 3.28084, 'Inch': 39.3701, 'Nautical Mile': 0.000539957}, weight:{'Kilograms':1,'Grams':1000,'Pounds':2.20462,'Ounce':35.274}, temperature:{'Celsius':'c','Fahrenheit':'f','Kelvin':'k'} };
+        function updateConvUnits(){ const type = convType.value; const unitData = units[type]; const options = Object.keys(unitData).map(u => `<option value="${unitData[u]}">${u}</option>`).join(''); fromUnit.innerHTML = options; toUnit.innerHTML = options; convResult.innerHTML = 'Result here'; }
+        function calculateConversion(){const t=convType.value,i=parseFloat(document.getElementById('converter-input').value);if(isNaN(i)){convResult.innerHTML='Invalid';return;}let r;if(t==='temperature'){const f=fromUnit.value,o=toUnit.value;if(f===o)r=i;else if(f==='c'&&o==='f')r=(i*9/5)+32;else if(f==='f'&&o==='c')r=(i-32)*5/9;else if(f==='c'&&o==='k')r=i+273.15;else if(f==='k'&&o==='c')r=i-273.15;else if(f==='f'&&o==='k')r=(i-32)*5/9+273.15;else if(f==='k'&&o==='f')r=(i-273.15)*9/5+32;}else{r=i/parseFloat(fromUnit.value)*parseFloat(toUnit.value);}convResult.innerHTML=`Result: <span class="value">${r.toFixed(6)}</span>`; animateResult(convResult);}
+        convType.addEventListener('change',updateConvUnits);
+        updateConvUnits();
+
+        function calculateAge(){const b=new Date(document.getElementById('birth-date').value),r=document.getElementById('datetime-result');if(isNaN(b.getTime())){r.innerHTML='Invalid';return;}const t=new Date();let y=t.getFullYear()-b.getFullYear(),m=t.getMonth()-b.getMonth(),d=t.getDate()-b.getDate();if(d<0){m--;d+=new Date(t.getFullYear(),t.getMonth(),0).getDate();}if(m<0){y--;m+=12;}r.innerHTML=`Age: <span class="value">${y}</span>y <span class="value">${m}</span>m <span class="value">${d}</span>d`; animateResult(r);}
+    
+        if (window.innerWidth > 768) { document.body.classList.remove('sidebar-hidden'); document.getElementById('app-container').classList.remove('sidebar-hidden'); }
+    </script>
+</body>
+</html>
